@@ -1,4 +1,4 @@
-from t_simbolos import *
+from simbolos.t_simbolos import *
 from err_semanticos import *
 
 ts = TablaSimbolos()
