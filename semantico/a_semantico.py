@@ -1,5 +1,5 @@
 from simbolos.t_simbolos import *
-from err_semanticos import *
+from semantico.err_semanticos import *
 
 ts = TablaSimbolos()
 

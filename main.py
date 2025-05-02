@@ -1,6 +1,6 @@
 # Dependencias necesarias: pip install lark-parser customtkinter
 import customtkinter as ctk
-
+from interfaz.interfaz import *
 
 # Crear la ventana principal
 root = ctk.CTk()
