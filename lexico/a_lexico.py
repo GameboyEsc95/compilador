@@ -1,5 +1,10 @@
 from lark import Lark, Token, UnexpectedInput
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from tokens import TOKENS, PALABRAS_RESERVADAS
+from parser.parser import *
 
 def generar_gramatica():
     reglas = []
@@ -13,7 +18,7 @@ def generar_gramatica():
     return "\n".join(reglas)
 
 gramatica = generar_gramatica()
-parser = Lark(gramatica, parser='lalr', lexer='standard')
+
 
 
 def analizar_lexico(texto):

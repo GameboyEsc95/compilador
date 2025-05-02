@@ -1,7 +1,7 @@
 TOKENS = {
     # Operadores
     "ASIGNACION": r"=",
-    "OPERADOR": r"[\+\-\*/%]",
+    "OPERADOR": r"[\+\-\*\/\%]",
     "COMPARADOR": r"(==|!=|<=|>=|<|>)",
     "LOGICO": r"(and|or|not)",
 
