@@ -5,6 +5,10 @@ from anytree import RenderTree
 # Reemplaza estos imports con tus módulos reales
 from parser import parser, analizar_codigo, lark_to_anytree
 
+from parser import parsear_bloque_seguro
+from semantico.a_semantico import AnalizadorSemantico  # asegúrate de que esta ruta sea correcta
+from anytree import RenderTree
+
 class InterfazApp:
     def __init__(self):
         ctk.set_appearance_mode("System")
@@ -72,19 +76,34 @@ class InterfazApp:
             tree_text = "Árbol de análisis sintáctico:\n"
             for pre, fill, node in RenderTree(anytree_root):
                 tree_text += f"{pre}{node.name}\n"
-            tree_text += "\nEl código es válido.\n"
+            tree_text += "\n✅ El código es válido sintácticamente.\n"
             self.output.insert("end", tree_text)
 
-        for error in errores:
-            self.error_output.insert("end", error + "\n")
+            # 🔍 Análisis semántico
+            try:
+                errores_semanticos = AnalizadorSemantico(tree)
 
-        # Aquí puedes simular la tabla de símbolos para pruebas:
+                if errores_semanticos:
+                    self.error_output.insert("end", "❌ Errores semánticos encontrados:\n")
+                    for err in errores_semanticos:
+                        self.error_output.insert("end", f"- {err}\n")
+                else:
+                    self.output.insert("end", "✅ El análisis semántico fue exitoso.\n")
+            except Exception as e:
+                self.error_output.insert("end", f"❌ Error inesperado en análisis semántico: {str(e)}\n")
+
+        # Mostrar errores sintácticos (si hubo)
+        for error in errores:
+            self.error_output.insert("end", f"❌ {error}\n")
+
+        # 🔧 Simulación de tabla de símbolos (esto debería integrarse con tu analizador real después)
         simbolos = [
             ["x", "Variable", "int", "global", "0x001", "1", "10", "activo", "-", "1"],
             ["y", "Variable", "float", "local", "0x002", "3", "3.14", "activo", "-", "1"],
         ]
         for fila in simbolos:
             self._agregar_fila(fila)
+
 
     def _agregar_fila(self, datos):
         num_fila = self.header_frame.grid_size()[1]  # filas actuales

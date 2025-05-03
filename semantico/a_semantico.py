@@ -1,18 +1,29 @@
-from simbolos.t_simbolos import *
-from semantico.err_semanticos import *
+# semantico/a_semantico.py
 
-ts = TablaSimbolos()
+from simbolos.t_simbolos import *  # Asegúrate de importar la tabla de símbolos
+from semantico.err_semanticos import *  # Importa los errores semánticos si los tienes definidos
+from lark import Tree
 
-# Agregar variable
-var = Variable(nombre="x", tipo="int", ambito=0, linea_decl=1, tamanio_memoria=4)
-ts.insertar(var)
+class AnalizadorSemantico:
+    def __init__(self):
+        self.simbolos = {}  # tabla de símbolos básica
 
-# Buscar variable
-resultado = ts.buscar("x")
-if resultado:
-    print(f"{resultado.nombre} fue declarado como {resultado.tipo}")
+    def analizar(self, arbol: Tree):
+        self._analizar_nodo(arbol)
 
-
-def verificar_suma(tipo1, tipo2, linea):
-    if tipo1 != "int" or tipo2 != "int":
-        raise ErrorTipoIncompatible("+", tipo1, tipo2, linea)
+    def _analizar_nodo(self, nodo):
+        if isinstance(nodo, Tree):
+            if nodo.data == "declaracion_variable":
+                tipo = nodo.children[0].value
+                nombre = nodo.children[1].value
+                if nombre in self.simbolos:
+                    raise Exception(f"Variable '{nombre}' ya declarada")
+                self.simbolos[nombre] = tipo
+            elif nodo.data == "asignacion":
+                nombre = nodo.children[0].value
+                if nombre not in self.simbolos:
+                    raise Exception(f"Variable '{nombre}' no declarada antes de usar")
+            
+            # Recursivo para todos los hijos
+            for hijo in nodo.children:
+                self._analizar_nodo(hijo)
