@@ -18,9 +18,20 @@ bloque_codigo: (declaracion_variable | declaracion_funcion | sentencia)*
 declaracion_variable: tipo IDENTIFICADOR OPERADOR_ASIGNACION expresion
 declaracion_constante: "constante" tipo IDENTIFICADOR "=" expresion
 
-tipo: "entero" | "flotante" | "booleano" | "caracter"
-    | "cadena" | "arreglo" | "estructura"
-    | "clase" | "interfaz" | "enumeracion"
+tipo: TIPO_ENTERO | TIPO_FLOTANTE | TIPO_BOOLEANO | TIPO_CARACTER
+    | TIPO_CADENA | TIPO_ARREGLO | TIPO_ESTRUCTURA
+    | TIPO_CLASE | TIPO_INTERFAZ | TIPO_ENUMERACION
+
+TIPO_ENTERO: "entero"
+TIPO_FLOTANTE: "flotante"
+TIPO_BOOLEANO: "booleano"
+TIPO_CARACTER: "caracter"
+TIPO_CADENA: "cadena"
+TIPO_ARREGLO: "arreglo"
+TIPO_ESTRUCTURA: "estructura"
+TIPO_CLASE: "clase"
+TIPO_INTERFAZ: "interfaz"
+TIPO_ENUMERACION: "enumeracion"
 
 sentencia: condicional
          | bucle_for
