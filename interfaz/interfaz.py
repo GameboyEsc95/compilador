@@ -1,72 +1,101 @@
 import customtkinter as ctk
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import subprocess
+from anytree import RenderTree
 
-from lexico.a_lexico import analizar_lexico
-
-
+# Reemplaza estos imports con tus módulos reales
+from parser import parser, analizar_codigo, lark_to_anytree
 
 class InterfazApp:
     def __init__(self):
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")
-
+        ctk.set_appearance_mode("System")
+        ctk.set_default_color_theme("blue")
         self.ventana = ctk.CTk()
-        self.ventana.geometry("800x600")
-        self.ventana.title("Compilador modular")
-
+        self.ventana.title("Analizador Sintáctico con Tabla de Símbolos")
+        self.ventana.geometry("1000x700")
         self._crear_widgets()
+        self._crear_tabla_simbolos()
         self.ventana.mainloop()
 
     def _crear_widgets(self):
-        self._crear_textbox_codigo()
-        self._crear_botones_accion()
-        self._crear_textbox_consola()
+        # Frame principal
+        self.frame_principal = ctk.CTkFrame(self.ventana)
+        self.frame_principal.pack(padx=10, pady=10, fill="both", expand=True)
 
-    def _crear_textbox_codigo(self):
-        self.textbox = ctk.CTkTextbox(self.ventana, width=750, height=300)
-        self.textbox.pack(pady=10)
-        self.textbox.insert("0.0", "Escribe tu código aquí...")
+        # Subdivisión en izquierda y derecha
+        self.frame_izquierdo = ctk.CTkFrame(self.frame_principal)
+        self.frame_izquierdo.pack(side="left", fill="both", expand=True, padx=5, pady=5)
 
-    def _crear_botones_accion(self):
-        frame_botones = ctk.CTkFrame(self.ventana)
-        frame_botones.pack(pady=10)
+        self.frame_derecho = ctk.CTkFrame(self.frame_principal)
+        self.frame_derecho.pack(side="right", fill="both", expand=True, padx=5, pady=5)
 
-        self.boton_analizar = ctk.CTkButton(
-            frame_botones, text="Analizar", command=self._analizar_codigo)
-        self.boton_analizar.pack(side="left", padx=10)
+        # Textbox de código fuente
+        self.textbox = ctk.CTkTextbox(self.frame_izquierdo, width=450, height=300)
+        self.textbox.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.boton_limpiar = ctk.CTkButton(
-            frame_botones, text="Limpiar", command=self._limpiar_campos)
-        self.boton_limpiar.pack(side="left", padx=10)
+        # Botón compilar
+        boton_compilar = ctk.CTkButton(self.frame_izquierdo, text="Compilar", command=self._compilar)
+        boton_compilar.pack(pady=5)
 
-    def _crear_textbox_consola(self):
-        self.consola = ctk.CTkTextbox(self.ventana, width=750, height=200)
-        self.consola.pack(pady=10)
-        self.consola.insert("0.0", "Consola de salida...")
+        # Área de salida de árbol
+        self.output = ctk.CTkTextbox(self.frame_derecho, width=440, height=150)
+        self.output.pack(pady=5, padx=5, fill="both", expand=True)
 
-    def _analizar_codigo(self):
-        codigo = self.textbox.get("0.0", "end").strip()
-        self.consola.delete("0.0", "end")
-        
-        if not codigo:
-            self.consola.insert("0.0", "Error: El campo de código está vacío.")
-            return
+        # Área de errores
+        self.error_output = ctk.CTkTextbox(self.frame_derecho, width=440, height=150, text_color="red")
+        self.error_output.pack(pady=5, padx=5, fill="both", expand=True)
 
-        resultado = analizar_lexico(codigo)
-        self.consola.insert("0.0", resultado)
+    def _crear_tabla_simbolos(self):
+        encabezados = ['Identificador', 'Categoría', 'Tipo de dato', 'Ámbito', 
+                       'Dirección de memoria', 'Línea de declaración', 'Valor', 
+                       'Estado', 'Estructura', 'Contador ']
 
+        bottom_frame = ctk.CTkFrame(self.ventana)
+        bottom_frame.pack(pady=10, fill="x")
 
-        # Aquí llamaría a tu analizador léxico/sintáctico
-        self.consola.delete("0.0", "end")
-        self.consola.insert("0.0", f"Procesando:\n{codigo}")
+        self.header_frame = ctk.CTkFrame(bottom_frame)
+        self.header_frame.pack(fill="x")
 
-    def _limpiar_campos(self):
-        self.textbox.delete("0.0", "end")
-        self.consola.delete("0.0", "end")
-        self.consola.insert("0.0", "Consola de salida...")
+        for i, encabezado in enumerate(encabezados):
+            label = ctk.CTkLabel(self.header_frame, text=encabezado, anchor="w", padx=5)
+            label.grid(row=0, column=i, padx=5, pady=5, sticky="nsew")
+            self.header_frame.grid_columnconfigure(i, weight=1)
 
-# Ejecución
-if __name__ == "__main__":
-    app = InterfazApp()
+    def _compilar(self):
+        self.output.delete("1.0", "end")
+        self.error_output.delete("1.0", "end")
+
+        codigo = self.textbox.get("1.0", "end").strip()
+        tree, errores = analizar_codigo(codigo)
+
+        if tree:
+            anytree_root = lark_to_anytree(tree)
+            tree_text = "Árbol de análisis sintáctico:\n"
+            for pre, fill, node in RenderTree(anytree_root):
+                tree_text += f"{pre}{node.name}\n"
+            tree_text += "\nEl código es válido.\n"
+            self.output.insert("end", tree_text)
+
+        for error in errores:
+            self.error_output.insert("end", error + "\n")
+
+        # Aquí puedes simular la tabla de símbolos para pruebas:
+        simbolos = [
+            ["x", "Variable", "int", "global", "0x001", "1", "10", "activo", "-", "1"],
+            ["y", "Variable", "float", "local", "0x002", "3", "3.14", "activo", "-", "1"],
+        ]
+        for fila in simbolos:
+            self._agregar_fila(fila)
+
+    def _agregar_fila(self, datos):
+        num_fila = self.header_frame.grid_size()[1]  # filas actuales
+        if num_fila < 5:
+            for i, dato in enumerate(datos):
+                texto = dato if dato is not None else "-"
+                label = ctk.CTkLabel(self.header_frame, text=texto, anchor="w", padx=5)
+                label.grid(row=num_fila, column=i, padx=5, pady=5, sticky="nsew")
+        else:
+            self._mostrar_archivo()
+
+    def _mostrar_archivo(self):
+        #subprocess.Popen(["notepad.exe", "tabla_simbolos.json"])
+        pass
