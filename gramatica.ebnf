@@ -4,21 +4,18 @@
 %ignore WS
 
 CADENA: "\"" /[^"]*/ "\""
-OPERADOR_ARITMETICO: "+" | "-" | "*" | "/"
 OPERADOR_LOGICO: "&&" | "||" | "!"
 OPERADOR_RELACIONAL: "<" | ">" | "<=" | ">=" | "==" | "!="
 OPERADOR_ASIGNACION: "=" | "+=" | "-=" | "*=" | "/="
 OPERADOR_INCREMENTO: "++" | "--"
 
-
-// Reglas
+// Reglas principales
 
 start: bloque_codigo
 
 bloque_codigo: (declaracion_variable | declaracion_funcion | sentencia)*
 
 declaracion_variable: tipo IDENTIFICADOR OPERADOR_ASIGNACION expresion
-
 declaracion_constante: "constante" tipo IDENTIFICADOR "=" expresion
 
 tipo: "entero" | "flotante" | "booleano" | "caracter"
@@ -32,40 +29,44 @@ sentencia: condicional
          | asignacion
 
 condicional: "si" "(" expresion ")" "entonces" "{" bloque_codigo "}" ("else" "{" bloque_codigo "}")?
-
 bucle_for: "para" "(" declaracion_variable ";" expresion ";" incremento ")" "{" bloque_codigo "}"
 bucle_while: "mientras" "(" expresion ")" "{" bloque_codigo "}"
 control_flujo: "cortar" | "seguir" | "finalizar" expresion?
 
 asignacion: IDENTIFICADOR OPERADOR_ASIGNACION expresion
 
-
 declaracion_funcion: "funcion" IDENTIFICADOR "(" parametros? ")" ("->" tipo)? "{" bloque_codigo "}"
 parametros: parametro ("," parametro)*
 parametro: tipo IDENTIFICADOR
 
-// Jerarquía de expresiones (como en tu gramática base)
-expresion: IDENTIFICADOR
+// EXPRESIONES con precedencia
+
+?expresion: logica
+
+?logica: relacional
+       | logica OPERADOR_LOGICO relacional      -> expresion_logica
+
+?relacional: suma
+           | suma OPERADOR_RELACIONAL suma      -> expresion_relacional
+
+?suma: producto
+     | suma "+" producto                        -> suma
+     | suma "-" producto                        -> resta
+
+?producto: unario
+         | producto "*" unario                  -> multiplicacion
+         | producto "/" unario                  -> division
+         | producto "%" unario                  -> modulo
+
+?unario: "-" unario                             -> negativo
+       | "+" unario                             -> positivo
+       | incremento
+       | primario
+
+?incremento: IDENTIFICADOR OPERADOR_INCREMENTO  -> incremento_post
+           | OPERADOR_INCREMENTO IDENTIFICADOR  -> incremento_pre
+
+?primario: IDENTIFICADOR
          | NUMERO
-         | expresion OPERADOR_ARITMETICO expresion
-         | expresion OPERADOR_RELACIONAL expresion
-         | expresion OPERADOR_LOGICO expresion
-         | incremento  // Esto asegura que el incremento pueda ser parte de la expresión
-
-incremento: IDENTIFICADOR OPERADOR_INCREMENTO
-           | IDENTIFICADOR OPERADOR_ARITMETICO expresion
-           | IDENTIFICADOR OPERADOR_ASIGNACION expresion
-
-relacional: relacional OPERADOR_RELACIONAL suma -> relacion
-          | suma
-
-suma: suma ("+" | "-") producto -> suma
-    | producto
-
-producto: producto ("*" | "/" | "%") factor -> producto
-        | factor
-
-factor: IDENTIFICADOR
-      | NUMERO
-      | CADENA
-      | "(" expresion ")"
+         | CADENA
+         | "(" expresion ")"

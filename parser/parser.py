@@ -1,4 +1,4 @@
-# parser/parser.py
+# parser == Analizador Sintáctico
 
 from lark import Lark, Tree
 from lark.exceptions import UnexpectedInput, UnexpectedToken
