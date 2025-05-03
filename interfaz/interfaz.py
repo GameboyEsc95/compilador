@@ -69,9 +69,16 @@ class InterfazApp:
         self.error_output.delete("1.0", "end")
 
         codigo = self.textbox.get("1.0", "end").strip()
-        tree, errores = analizar_codigo(codigo)
+        tree, errores_sintacticos = analizar_codigo(codigo) # Renombramos para claridad
+
+        if errores_sintacticos:
+            self.error_output.insert("end", "❌ Errores de sintaxis encontrados:\n")
+            for err in errores_sintacticos:
+                self.error_output.insert("end", f"- {err}\n")
+            return
 
         if tree:
+            print(tree.pretty()) # Esto requiere que el objeto 'tree' tenga un método 'pretty'
             anytree_root = lark_to_anytree(tree)
             tree_text = "Árbol de análisis sintáctico:\n"
             for pre, fill, node in RenderTree(anytree_root):
@@ -81,7 +88,8 @@ class InterfazApp:
 
             # 🔍 Análisis semántico
             try:
-                errores_semanticos = AnalizadorSemantico(tree)
+                analizador_semantico = AnalizadorSemantico()
+                errores_semanticos = analizador_semantico.analizar(tree)
 
                 if errores_semanticos:
                     self.error_output.insert("end", "❌ Errores semánticos encontrados:\n")
@@ -91,10 +99,6 @@ class InterfazApp:
                     self.output.insert("end", "✅ El análisis semántico fue exitoso.\n")
             except Exception as e:
                 self.error_output.insert("end", f"❌ Error inesperado en análisis semántico: {str(e)}\n")
-
-        # Mostrar errores sintácticos (si hubo)
-        for error in errores:
-            self.error_output.insert("end", f"❌ {error}\n")
 
         # 🔧 Simulación de tabla de símbolos (esto debería integrarse con tu analizador real después)
         simbolos = [

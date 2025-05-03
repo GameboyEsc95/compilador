@@ -8,11 +8,11 @@ from semantico.a_semantico import AnalizadorSemantico  # Importar el analizador 
 with open("gramatica.ebnf", "r", encoding="utf-8") as file:
     GRAMATICA = file.read()
     print("Gramática cargada correctamente:\n")
-    print(GRAMATICA)
+    #print(GRAMATICA)
 
 # Crear el parser usando LALR
 try:
-    parser = Lark(GRAMATICA, start="start", parser="lalr", lexer="basic")
+    parser = Lark(GRAMATICA, start="start", parser="lalr", lexer="basic", propagate_positions=True)
     print("✅ El parser fue creado correctamente.")
 except Exception as e:
     print("❌ Error al crear el parser:")
