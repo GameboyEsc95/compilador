@@ -1,12 +1,14 @@
 import customtkinter as ctk
 import subprocess
 from anytree import RenderTree
-from interfaz.crear_tabla import *
-import os               
-from datetime import datetime 
+from interfaz.crear_tabla import extraer_tabla_simbolos
+import os
+from datetime import datetime
 from tkinter import messagebox
 
-from analizador import parser, analizar_codigo, lark_to_anytree
+from parser import parser, analizar_codigo, lark_to_anytree
+from semantico.a_semantico import AnalizadorSemantico  # asegúrate de que esta ruta sea correcta
+
 
 class InterfazApp:
     def __init__(self):
@@ -48,9 +50,9 @@ class InterfazApp:
         self.error_output.pack(pady=5, padx=5, fill="both", expand=True)
 
     def _crear_tabla_simbolos(self):
-        encabezados = ['Identificador', 'Categoría', 'Tipo de dato', 'Ámbito', 
-                       'Dirección de memoria', 'Línea de declaración', 'Valor', 
-                       'Estado', 'Estructura', 'Contador ']
+        encabezados = ['Identificador', 'Categoría', 'Tipo de dato', 'Ámbito',
+                      'Dirección de memoria', 'Línea de declaración', 'Valor',
+                      'Estado', 'Estructura', 'Contador ']
 
         bottom_frame = ctk.CTkFrame(self.ventana)
         bottom_frame.pack(pady=10, fill="x")
@@ -62,91 +64,100 @@ class InterfazApp:
             label = ctk.CTkLabel(self.header_frame, text=encabezado, anchor="w", padx=5)
             label.grid(row=0, column=i, padx=5, pady=5, sticky="nsew")
             self.header_frame.grid_columnconfigure(i, weight=1)
-    
+
 
     def _compilar(self):
-    
         self.output.delete("1.0", "end")
         self.error_output.delete("1.0", "end")
 
         codigo = self.textbox.get("1.0", "end").strip()
-        tree, errores = analizar_codigo(codigo)
-        
+        tree, errores_sintacticos = analizar_codigo(codigo) # Renombramos para claridad
+
+        if errores_sintacticos:
+            self.error_output.insert("end", "❌ Errores de sintaxis encontrados:\n")
+            for err in errores_sintacticos:
+                self.error_output.insert("end", f"- {err}\n")
+            return
+
         if tree:
+            print(tree.pretty())
             anytree_root = lark_to_anytree(tree)
-            tabla_simulada = extraer_tabla_simbolos(tree)
-            print(f"Tabla: {tabla_simulada}" )
             tree_text = "Árbol de análisis sintáctico:\n"
-            print(anytree_root)
-            i = 0
             for pre, fill, node in RenderTree(anytree_root):
-                i += 1
-                print(f"pre: {pre}, node {node.name}", fill, i)
                 tree_text += f"{pre}{node.name}\n"
-            tree_text += "\nEl código es válido.\n"
+            tree_text += "\n✅ El código es válido sintácticamente.\n"
             self.output.insert("end", tree_text)
 
+            # 🔍 Análisis semántico
+            try:
+                analizador_semantico = AnalizadorSemantico()
+                errores_semanticos = analizador_semantico.analizar(tree)
 
-        for error in errores:
+                if errores_semanticos:
+                    self.error_output.insert("end", "❌ Errores semánticos encontrados:\n")
+                    for err in errores_semanticos:
+                        self.error_output.insert("end", f"- {err}\n")
+                else:
+                    self.output.insert("end", "✅ El análisis semántico fue exitoso.\n")
+
+                # Tabla de símbolos
+                tabla_simbolos_data = extraer_tabla_simbolos(tree)
+                print(f"Tabla de símbolos extraída: {tabla_simbolos_data}")
+                for simbolo in tabla_simbolos_data:
+                    fila = [
+                        simbolo.get('identifier', '-'),
+                        simbolo.get('categoría', '-'),
+                        simbolo.get('tipo', '-'),
+                        simbolo.get('ámbito', '-'),
+                        simbolo.get('dirección', '-'),
+                        simbolo.get('línea', '-'),
+                        simbolo.get('valor', '-'),
+                        simbolo.get('estado', '-'),
+                        simbolo.get('estructura', '-'),
+                        simbolo.get('contador', '-')
+                    ]
+                    self._agregar_fila(fila)
+
+                if tabla_simbolos_data:
+                    self._mostrar_archivo(tabla_simbolos_data)
+
+            except Exception as e:
+                self.error_output.insert("end", f"❌ Error inesperado en análisis semántico: {str(e)}\n")
+
+        for error in errores_sintacticos: # Mostrar errores sintácticos también aquí por consistencia
             self.error_output.insert("end", error + "\n")
-        simbolos =[]
-        for json in tabla_simulada:
-            lista = []
-            lista.append(json['identifier'])
-            lista.append(json['tipo'])
-            lista.append(json['dirección'])
-            lista.append(json['valor'])
-            simbolos.append(lista)
-            print(simbolos)
-        # Aquí puedes simular la tabla de símbolos para pruebas:
-        for fila in simbolos:
-            self._agregar_fila(fila, tabla_simulada)
-        
-        if len(simbolos) >= 5:
-                self._mostrar_archivo(tabla_simulada)
 
-    def _agregar_fila(self, datos, tabla):
+
+    def _agregar_fila(self, datos):
         num_fila = self.header_frame.grid_size()[1]  # filas actuales
-        if num_fila <= 4:
-            for i, dato in enumerate(datos):
-                texto = dato if dato is not None else "-"
-                label = ctk.CTkLabel(self.header_frame, text=texto, anchor="w", padx=5)
-                label.grid(row=num_fila, column=i, padx=5, pady=5, sticky="nsew")
-        
+        for i, dato in enumerate(datos):
+            texto = dato if dato is not None else "-"
+            label = ctk.CTkLabel(self.header_frame, text=texto, anchor="w", padx=5)
+            label.grid(row=num_fila, column=i, padx=5, pady=5, sticky="nsew")
 
     def _mostrar_archivo(self, tabla):
-
         nombre_carpeta = "Tablas_simbolos"
         try:
             os.makedirs(nombre_carpeta, exist_ok=True)
-            #print(f"Directorio '{nombre_carpeta}' asegurado/creado.")
         except OSError as error:
-
             print(f"Error al crear el directorio '{nombre_carpeta}': {error}")
-            # Podrías querer detener el script aquí o guardar en el directorio actual
-            nombre_carpeta = "." # Guarda en el directorio actual como fallback (opcional)
+            nombre_carpeta = "."
 
         ahora = datetime.now()
-        timestamp = ahora.strftime("%y%m%d%H%M%S") 
+        timestamp = ahora.strftime("%y%m%d%H%M%S")
         nombre_archivo_base = f"tabla_simbolos_{timestamp}.txt"
-        #Ruta completa
         ruta_completa_archivo = os.path.join(nombre_carpeta, nombre_archivo_base)
         print(f"Se guardará el archivo en: {ruta_completa_archivo}")
 
         try:
             with open(ruta_completa_archivo, 'w', encoding='utf-8') as archivo:
-                
                 archivo.write(str(tabla))
             if messagebox.askyesno(nombre_archivo_base, "archivo creado correctamente ¿Quieres abrirlo?"):
                 os.startfile(ruta_completa_archivo)
-            else: 
-                pass
-
-            #print(f"Archivo '{nombre_archivo_base}' guardado exitosamente en '{nombre_carpeta}'.")
-
         except IOError as error:
-            # Captura errores específicos de lectura/escritura de archivos
             print(f"Error al escribir en el archivo '{ruta_completa_archivo}': {error}")
         except Exception as e:
-            # Captura cualquier otro error inesperado
             print(f"Ocurrió un error inesperado: {e}")
+
+if __name__ == "__main__":
+    app = InterfazApp()
